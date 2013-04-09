@@ -26,5 +26,17 @@ def png_to_rgba_matrices(image):
     b_arr[i] = b
     a_arr[i] = a
     i += 1
-  return np.array([r_arr.reshape(image.size), g_arr.reshape(image.size),
+  return ([r_arr.reshape(image.size), g_arr.reshape(image.size),
     b_arr.reshape(image.size), a_arr.reshape(image.size)])
+ 
+def to_image_arr(rgba_arrs):
+  def place_color(x,y,z):
+    print "%s %s %s" % (str(x), str(y), str(z))
+    return rgba_arrs[0]
+  twod_shape = rgba_arrs[0].shape
+  shape = (twod_shape[0], twod_shape[1], 4)
+  print shape
+  return np.copy(np.fromfunction(place_color, shape, dtype=np.uint8))
+
+def to_image(rgba_arrs):
+  return Image.fromarray(to_image_arr(rgba_arrs))

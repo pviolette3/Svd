@@ -1,32 +1,65 @@
 import numpy as np
-import Image
-import np.linalg.eig as npeig
 
-def compress_svd(arr, goal_proportion=0.5):
+def best_rank(arr, to_rank):
   """
-  Give a best rank approximation based on a goal proportion
-  of the original image
+  Gives the matrix that is the best (to_rank) rank approximation of the
+  given matrix.
   """
-  arr = svd(arr)
-  total = np.sum(svd_arr[1])
-  i = 0
-  for val in 
+  u, d, v_t = best_rank_svd(arr, to_rank)
+  return np.dot(np.dot(u, d), v_t)
+
+def best_rank_svd(arr, to_rank):
+  """
+  Give a best rank approximation svd of the matrix arr of the given rank.
+  Returns the tuple (u', d', v_t') such that the product has rank to_rank
+
+  """
+  u, d, v_t = svd(arr)
+  u_prime = np.zeros((u.shape[0], to_rank) )
+  d_prime = np.zeros((to_rank, to_rank))
+  v_t_prime = np.zeros((to_rank, v_t.shape[1]))
+  for i in range(to_rank):
+    u_prime[..., i] = u[..., i] #copy col
+    d_prime[i][i] = u[i][i]
+    v_t_prime[i,...] = v_t[i,...] #copy row
+  return (u_prime, d_prime, v_t_prime)
 
 def svd(matr):
   """
   Calculates the SVD of the given matrix.
-  returns: [U, D, V.T] form of SVD, where D is an rxr square matrix
+  returns: The tuple (U, D, V.T) form of SVD, where D is an rxr square matrix
   """
+  transpose = handle_transpose(matr)
+  if(transpose):
+    return transpose
   ata = np.dot(matr.T, matr)
-  eigvals, eigvects = npeig(ata)#A^T A
+  eigvals, eigvects = np.linalg.eig(ata)#A^T A
   res = singular_vals(combine(eigvals, eigvects))
-  v = res['eigvect']
-  d = res['eigvals']
-  u = np.zeros(res.shape, np.float64)
-  i = 0
-  for vals in np.nditer(u, op_flags['readwrite']):
-    u[...] = np.dot(matr, v[i]) / d[i]
-  return np.array([u, d, v.T])
+  v_t = res['eigvect']
+  d = res['eigval']
+  u, d_as_mat = solve_for_u(d, v_t, matr) 
+  return (u, d_as_mat, v_t)
+
+def handle_transpose(mat):
+  """
+  If the matrix given has more columns than rows,
+  we must its svd by transposing the svd of its transpose.
+  """
+  if mat.shape[0] < mat.shape[1]:
+    svd_t = svd(mat.T)
+    return (svd_t[2].T, svd_t[1], svd_t[0].T)
+  else:
+    return None
+
+def solve_for_u(d, v_t, matr):
+  u = np.zeros(matr.shape, np.float64)
+  d_as_mat = np.zeros((matr.shape[1], matr.shape[1]), np.float64)
+  for i in range(u.shape[-1]):
+    av = np.dot(matr, v_t[i].T)
+    res = av / d[i]
+    u[..., i] =  res
+    d_as_mat[i][i] = d[i]
+  return (u, d_as_mat)
 
 def combine(eigvals, eigvects):
   """
@@ -43,14 +76,13 @@ def combine(eigvals, eigvects):
   return result
 
 def singular_vals(eig_array):
+  """
+  Sorts the eigenvalues in ascending order, then finds
+  the singular values by taking the square roots
+  """
+  eig_array['eigval'] *= -1
   eig_sorted = np.sort(eig_array, order='eigval')
-  eigvals = eig_sorted['eigval'][::-1] #sort ascending
-  for l in np.nditer(eigvals, op_flags['readwrite']):
-    eigvals[...] = np.sqrt(l)
+  eig_sorted['eigval'] *= -1
+  for i in range(eig_sorted['eigval'].size):
+    eig_sorted['eigval'][i] = np.sqrt(eig_sorted['eigval'][i])
   return eig_sorted
-
-
-def best_rank(img_svd):
-
-
-def process(double_img_arr):
