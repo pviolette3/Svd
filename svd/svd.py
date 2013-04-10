@@ -33,7 +33,7 @@ def svd(matr):
   if(transpose):
     return transpose
   ata = np.dot(matr.T, matr)
-  eigvals, eigvects = np.linalg.eig(ata)#A^T A
+  eigvals, eigvects = np.linalg.eig(ata)
   res = singular_vals(combine(eigvals, eigvects))
   v_t = res['eigvect']
   d = res['eigval']
@@ -70,7 +70,7 @@ def combine(eigvals, eigvects):
   result = np.zeros(eigvals.shape, dt)
   i = 0 # we'll iterate in order
   for l in np.nditer(eigvals, order='K'):
-    result['eigval'][i] = l
+    result['eigval'][i] = eigvals[i]
     result['eigvect'][i] = eigvects[i]
     i += 1
   return result
@@ -83,6 +83,13 @@ def singular_vals(eig_array):
   eig_array['eigval'] *= -1
   eig_sorted = np.sort(eig_array, order='eigval')
   eig_sorted['eigval'] *= -1
-  for i in range(eig_sorted['eigval'].size):
-    eig_sorted['eigval'][i] = np.sqrt(eig_sorted['eigval'][i])
+  r = 0 
+  for val in np.nditer(eig_sorted['eigval'], op_flags=['readwrite']):
+    if val > 10**-6:
+      val[...] = np.sqrt(val)
+      r += 1
+  result = np.zeros(r, dtype=eig_sorted.dtype)
+  print "R (%d) values" % (r)
+  for i in range(r):
+    result[i] = eig_sorted[i]
   return eig_sorted

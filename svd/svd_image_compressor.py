@@ -1,6 +1,7 @@
 import svd
 import image_lib
 import numpy as np
+import Image
 
 def process(filename):
   compress(filename).save("comp_"+filename)
@@ -16,9 +17,15 @@ def compress(filename):
   colors = image_lib.read_img(filename) 
   approx = []
   approximator = RankApprox(0.5)
-  for arr in colors:
-    approx.append( approximator.approx(arr) )
-  return image_lib.to_image(approx)
+# for arr in colors:
+#   for x in np.nditer(arr, op_flags=['readwrite']):
+#     x[...] = x / 255.0 #normalize the array for svd purposes
+#    approx.append( approximator.approx(arr) )
+#  for a in approx:
+#    for x in np.nditer(a, op_flags=['readwrite']):
+#      x[...] = x * 255
+#  return image_lib.to_image(approx)
+  return Image.merge("RGB", colors)
 
 class RankApprox:
   
