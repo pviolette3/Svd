@@ -7,7 +7,7 @@ class SVDBase:
     Gives the matrix that is the best (to_rank) rank approximation of the
     given matrix.
     """
-    u, d, v_t = best_rank_svd(to_rank)
+    u, d, v_t = self.best_rank_svd(to_rank)
     return np.dot(np.dot(u, d), v_t)
 
   def best_rank_svd(self, to_rank):
@@ -19,7 +19,7 @@ class SVDBase:
     u_prime = np.zeros((u.shape[0], to_rank) )
     d_prime = np.zeros((to_rank, to_rank))
     v_t_prime = np.zeros((to_rank, v_t.shape[1]))
-    for i in range(to_rank):
+    for i in range(min(to_rank, d.shape[0])):
       u_prime[..., i] = u[..., i] #copy col
       d_prime[i][i] = d[i][i]
       v_t_prime[i,...] = v_t[i,...] #copy row
@@ -34,67 +34,72 @@ class SVDBase:
 class SVD(SVDBase):
 
   def __init__(self, arr):
-    SVDBase.__init__();
     self.arr = arr
+    self.m = arr.shape[0]
+    self.n = arr.shape[1]
 
   def get(self):
     """
     Calculates the SVD of the given matrix.
     returns: The tuple (U, D, V.T) form of SVD, where D is an rxr square matrix
     """
-    ata = np.dot(matr.T, matr)
+    ata = np.dot(self.arr.T, self.arr)
     eigvals, eigvects = np.linalg.eigh(ata)
-    res = singular_vals(combine(eigvals, eigvects))
-    v_t = res['eigvect']
-    d = res['eigval']
-    u, d_as_mat = solve_for_u(d, v_t, matr) 
-    return (u, d_as_mat, v_t)
-   
-  def solve_for_u(self, d, v_t):
-    u = np.zeros((matr.shape[0], d.shape[0]), np.float64)
-    d_as_mat = np.zeros((d.shape[0], d.shape[0]), np.float64)
-    for i in range(d.shape[0]):
-      av = np.dot(matr, v_t[i].T)
-      res = av / d[i]
-      u[..., i] =  res
-      d_as_mat[i][i] = d[i]
-    return (u, d_as_mat)
-
-  def combine(eigvals, eigvects):
-    """
-    Combines eigvals and eigvects into a single multidimesional array
-    returns: res['eigval'] = eigvals and res['eigvect'] = eigvects
-    """
-    dt = np.dtype([('eigval', np.float64), ('eigvect', np.float64, (eigvects.shape[1],))])
-    result = np.zeros(eigvals.shape, dt)
-    i = 0 # we'll iterate in order
-    for l in np.nditer(eigvals, order='K'):
-      result['eigval'][i] = eigvals[i]
-      result['eigvect'][i] = eigvects[i]
+    singular_vals, r = self.singular_vals(eigvals)
+    print "singular values"
+    print singular_vals
+    dmat, v = self.get_decomp_matrices(r, singular_vals, eigvals, eigvects)
+    print "Inverse should be transpose"
+    print np.allclose(np.dot(v.T, v), np.eye(v.T.shape[0]))
+    dinv = np.linalg.inv(dmat)
+    print "Does I=(D.I V.T A.T) (A V D.I)?"
+    print np.allclose(np.eye(r), np.dot(dinv, np.dot(v.T, np.dot(np.dot(self.arr.T, self.arr), np.dot(v, dinv)))))
+    print "V eivenvector of A.T A ?"
+    print np.allclose(np.dot(ata, v), np.dot(np.dot(v, dmat), dmat))
+    print "D inverse works well?"
+    print np.allclose(np.dot(np.linalg.inv(dmat), dmat), np.eye(r))
+    print "U orthogonal?"
+    u = np.dot(self.arr, np.dot(v, dinv))
+    print np.allclose(np.dot(u.T, u), np.eye(r))
+    return (u, dmat, v.T)
+  
+  def singular_vals(self, eigenvals):
+    dt = np.dtype([('singular_val', np.float64), ('index', np.uint16)])
+    singvals = np.zeros(eigenvals.shape, dt)
+    i = 0
+    for l in np.nditer(eigenvals):
+      singvals['singular_val'][i] = l
+      singvals['index'][i] = i
       i += 1
-    return result
-
-  def singular_vals(eig_array):
-    """
-    Sorts the eigenvalues in ascending order, then finds
-    the singular values by taking the square roots
-    """
-    eig_array['eigval'] *= -1
-    eig_sorted = np.sort(eig_array, order='eigval')
-    eig_sorted['eigval'] *= -1
-    r = 0 
-    for val in np.nditer(eig_sorted['eigval'], op_flags=['readwrite']):
-      if val > 10**-6:
-        val[...] = np.sqrt(val)
+    singvals['singular_val'] *= -1
+    singsorted = np.sort(singvals, order='singular_val')
+    singsorted['singular_val'] *= -1
+    r = 0
+    for val in np.nditer(singsorted, op_flags=['readwrite']):
+      if val['singular_val'] > 0:
+        val['singular_val'][...] = np.sqrt(val['singular_val'])
         r += 1
-    result = np.zeros(r, dtype=eig_sorted.dtype)
+    return (singsorted, r)
+
+  def get_decomp_matrices(self,r, singular_vals, eigenvals, eigvects):
+    dmat = np.zeros((r,r), dtype=np.float64)
+    v = np.zeros((self.n, r), dtype=np.float64)
+    print "v shape is %s" % (v.shape,)
+    print "eigenvect shape is %s" % (eigvects.shape,)
+    ata = np.dot(self.arr.T, self.arr)
+    print "ata shape is %s" % (ata.shape,)
     for i in range(r):
-      result[i] = eig_sorted[i]
-    return result
+      sv = singular_vals['singular_val'][i]
+      dmat[i][i] = sv
+      eigv = eigvects[:,singular_vals['index'][i]]
+      v[:,i] = eigv
+      print np.allclose(np.dot(ata, eigv), sv*sv*eigv)
+      print np.allclose(sv * sv, eigenvals[singular_vals['index'][i]])
+    print "Done. v shape is now %s" % (v.shape,)
+    return (dmat, v)
 
 class NumpyLAPACKSVD(SVDBase):
   def __init__(self, arr):
-#    SVDBase.__init__(self)
     self.arr = arr
 
   def get(self):
