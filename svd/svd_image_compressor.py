@@ -2,10 +2,14 @@ import svd
 import image_lib
 import numpy as np
 import Image
+from svd import SVD, NumpyLAPACKSVD
+
+from scipy import ndimage
 
 def process(filename):
-  compress(filename).save("comp_"+filename)
-  return None
+  image = compress(filename)
+  image.save("comp_"+filename)
+  return image
 
 def compress(filename):
   """
@@ -16,16 +20,32 @@ def compress(filename):
   """
   colors = image_lib.read_img(filename) 
   approx = []
-  approximator = RankApprox(0.5)
-# for arr in colors:
-#   for x in np.nditer(arr, op_flags=['readwrite']):
-#     x[...] = x / 255.0 #normalize the array for svd purposes
-#    approx.append( approximator.approx(arr) )
-#  for a in approx:
-#    for x in np.nditer(a, op_flags=['readwrite']):
-#      x[...] = x * 255
-#  return image_lib.to_image(approx)
-  return Image.merge("RGB", colors)
+  approximator = RankApprox(1.0)
+  for arr in colors:
+    U, D, V = NumpyLAPACKSVD(arr).get()
+    print U.shape
+    print D.shape
+    print V.shape
+    approx.append(np.dot(U, np.dot(D, V)))
+  print "red svd'ed"
+  print approx[0]
+  for i in range(len(approx)):
+    approx[i] = to_uint8(approx[i])
+  return image_lib.to_image(approx)
+
+def to_uint8(float_arr):
+  for x in np.nditer(float_arr, op_flags=['readwrite']):
+    if x > 255:
+      x[...] = 255
+    elif x < 0:
+      x = 0
+    else:
+      x[...] = np.floor(x)
+  return float_arr.astype(np.uint8)
+
+def through_the_pipes(filename):
+  colors = image_lib.read_img(filename)
+  image_lib.to_image(map(to_uint8,colors)).save("pipes_" + filename)
 
 class RankApprox:
   
