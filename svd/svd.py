@@ -15,13 +15,13 @@ class SVDBase:
     Give a best rank approximation svd of the matrix arr of the given rank.
     Returns the tuple (u', d', v_t') such that the product has rank to_rank
     """
-    u, d, v_t = get(self)
+    u, d, v_t = self.get()
     u_prime = np.zeros((u.shape[0], to_rank) )
     d_prime = np.zeros((to_rank, to_rank))
     v_t_prime = np.zeros((to_rank, v_t.shape[1]))
     for i in range(to_rank):
       u_prime[..., i] = u[..., i] #copy col
-      d_prime[i][i] = u[i][i]
+      d_prime[i][i] = d[i][i]
       v_t_prime[i,...] = v_t[i,...] #copy row
     return (u_prime, d_prime, v_t_prime)
 

@@ -22,13 +22,9 @@ def compress(filename):
   approx = []
   approximator = RankApprox(1.0)
   for arr in colors:
-    U, D, V = NumpyLAPACKSVD(arr).get()
-    print U.shape
-    print D.shape
-    print V.shape
+    print arr.shape
+    U, D, V = NumpyLAPACKSVD(arr).best_rank_svd(arr.shape[1] / 10)
     approx.append(np.dot(U, np.dot(D, V)))
-  print "red svd'ed"
-  print approx[0]
   for i in range(len(approx)):
     approx[i] = to_uint8(approx[i])
   return image_lib.to_image(approx)

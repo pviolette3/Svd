@@ -15,10 +15,8 @@ def png_to_rgba_matrices(image):
   Output: A 3xWxH matrix whose elements correspond to the RGB of the image
   (Matix could be 4xWxH if we have an Alpha component)
   """
-  r,g,b,a = image.split()
-  print "a"
-  print np.array(a)
-  return (np.array(r), np.array(g), np.array(b))
+  rgb = image.split()
+  return (np.array(rgb[0]), np.array(rgb[1]), np.array(rgb[2]))
 
 def to_image_arr(rgba_arrs):
   result = []
