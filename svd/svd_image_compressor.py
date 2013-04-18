@@ -4,8 +4,6 @@ import numpy as np
 import Image
 from svd import SVD, NumpyLAPACKSVD
 
-from scipy import ndimage
-
 def process(filename, rank_comp=10):
   image = compress(filename, rank_comp)
   image.save("comp_"+filename)
@@ -14,9 +12,9 @@ def process(filename, rank_comp=10):
 def compress(filename, rank_comp):
   """
   Given a png filename, this will use svd to find the best
-  rank approximation of 10% of the rank of the given png.
+  rank approximation of 1 / rank_comp of the rank of the given png.
 
-  It returns the image calculated.
+  It returns the PIL image calculated.
   """
   colors = image_lib.read_img(filename) 
   approx = []
@@ -29,6 +27,10 @@ def compress(filename, rank_comp):
   return image_lib.to_image(approx)
 
 def to_uint8(float_arr):
+  """
+  A somewhat inefficient way to convert from the float array required by SVD
+  back to byte array for re-joining.
+  """
   for x in np.nditer(float_arr, op_flags=['readwrite']):
     if x > 255:
       x[...] = 255
